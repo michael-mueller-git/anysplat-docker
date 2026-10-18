@@ -20,6 +20,8 @@ ARG TORCH_VERSION=2.8.0
 ARG TORCH_CUDA_ARCH_LIST="8.0;8.6"
 # Optional build-time Python package mirror, e.g. https://proxpi.k8s.lan/index/
 ARG PIP_INDEX_URL=""
+# Optional build-time Hugging Face mirror, e.g. https://olah.k8s.lan
+ARG HF_ENDPOINT=""
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -39,9 +41,17 @@ RUN python3 -m pip install --upgrade pip "setuptools<81" wheel
 
 # --- vendored AnySplat app code (pinned commit) -----------------------------
 WORKDIR /app
-RUN git clone https://huggingface.co/spaces/${SPACE_REPO} /app \
+RUN GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/spaces/${SPACE_REPO} /app \
  && git -C /app checkout ${SPACE_REV} \
  && rm -rf /app/.git
+
+# The shipped pytorch3d wheel lives in Git LFS: a plain clone yields only a
+# 133-byte pointer, so fetch the real artifact from the resolve endpoint.
+RUN curl -fL --retry 3 \
+      "${HF_ENDPOINT:-https://huggingface.co}/spaces/${SPACE_REPO}/resolve/${SPACE_REV}/pytorch3d-0.7.9-cp310-cp310-linux_x86_64.whl" \
+      -o /app/pytorch3d-0.7.9-cp310-cp310-linux_x86_64.whl \
+ && stat -c '%s %n' /app/pytorch3d-0.7.9-cp310-cp310-linux_x86_64.whl \
+ && test "$(stat -c%s /app/pytorch3d-0.7.9-cp310-cp310-linux_x86_64.whl)" -gt 1000000
 
 # --- PyTorch (CUDA 12.8 wheels, Python 3.10) --------------------------------
 RUN python3 -m pip install \
@@ -60,8 +70,6 @@ RUN python3 -m pip install -r /app/requirements.txt
 # --- bake the model weights (~2.9 GB) so the image runs fully offline --------
 ARG MODEL_REPO=lhjiang/anysplat
 ARG MODEL_REV=d2e8c343672646041ad4ea518184968f94362f01
-# Optional HF mirror at build time, e.g. https://olah.k8s.lan
-ARG HF_ENDPOINT=""
 RUN MODEL_REPO=${MODEL_REPO} MODEL_REV=${MODEL_REV} HF_ENDPOINT=${HF_ENDPOINT} \
     python3 -c "import os; from huggingface_hub import snapshot_download; snapshot_download(os.environ['MODEL_REPO'], revision=os.environ['MODEL_REV'], local_dir='/opt/models/anysplat')" \
  && du -sh /opt/models/anysplat
