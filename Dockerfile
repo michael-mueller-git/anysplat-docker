@@ -70,7 +70,8 @@ RUN python3 -m pip install -r /app/requirements.txt
 # --- bake the model weights (~2.9 GB) so the image runs fully offline --------
 ARG MODEL_REPO=lhjiang/anysplat
 ARG MODEL_REV=d2e8c343672646041ad4ea518184968f94362f01
-RUN MODEL_REPO=${MODEL_REPO} MODEL_REV=${MODEL_REV} HF_ENDPOINT=${HF_ENDPOINT} \
+RUN MODEL_REPO=${MODEL_REPO} MODEL_REV=${MODEL_REV} \
+    ${HF_ENDPOINT:+HF_ENDPOINT=${HF_ENDPOINT}} \
     python3 -c "import os; from huggingface_hub import snapshot_download; snapshot_download(os.environ['MODEL_REPO'], revision=os.environ['MODEL_REV'], local_dir='/opt/models/anysplat')" \
  && du -sh /opt/models/anysplat
 
