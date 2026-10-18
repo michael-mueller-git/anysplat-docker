@@ -48,7 +48,7 @@ docker run --rm --gpus all -p 7860:7860 \
 
 `SPACE_REPO`, `SPACE_REV` (vendored Space, pinned), `MODEL_REPO`, `MODEL_REV`
 (baked weights, pinned), `TORCH_CUDA_ARCH_LIST` (default `8.0;8.6` =
-CMP-170HX/A100 + RTX 3090), `PIP_INDEX_URL` / `HF_ENDPOINT` (build mirrors).
+CMP-170HX/A100 + RTX 3090), `PIP_INDEX_URL` (build-time package mirror).
 
 ## Notes
 
