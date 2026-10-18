@@ -17,6 +17,9 @@ FROM nvidia/cuda:${CUDA_VERSION}-runtime-ubuntu${UBUNTU_VERSION}
 ARG SPACE_REPO=alexnasa/AnySplat
 ARG SPACE_REV=94ef0326ac30a713906d583ad1fbcfe814c5faf1
 ARG TORCH_VERSION=2.8.0
+# The Space's README pins `sdk_version`; gradio is NOT in requirements.txt
+# (HF Spaces installs it from the SDK), so it must be added explicitly.
+ARG GRADIO_VERSION=5.41.1
 ARG TORCH_CUDA_ARCH_LIST="8.0;8.6"
 # Optional build-time Python package mirror, e.g. https://proxpi.k8s.lan/index/
 ARG PIP_INDEX_URL=""
@@ -64,7 +67,11 @@ RUN python3 -m pip install /app/pytorch3d-0.7.9-cp310-cp310-linux_x86_64.whl \
       "gsplat @ https://github.com/nerfstudio-project/gsplat/releases/download/v1.5.3/gsplat-1.5.3+pt22cu121-cp310-cp310-linux_x86_64.whl"
 
 # --- remaining python deps --------------------------------------------------
-RUN python3 -m pip install -r /app/requirements.txt
+# gradio is supplied by the HF Space SDK, not by requirements.txt; install it
+# explicitly and prove it imports, so a missing dep fails the build not the pod.
+RUN python3 -m pip install -r /app/requirements.txt \
+ && python3 -m pip install "gradio==${GRADIO_VERSION}" \
+ && python3 -c "import gradio; print('gradio', gradio.__version__)"
 
 # --- bake the model weights (~2.9 GB) so the image runs fully offline --------
 ARG MODEL_REPO=lhjiang/anysplat
